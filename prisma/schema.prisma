@@ -1,0 +1,80 @@
+// Cascade のデータモデル。
+// MVP 20機能ぶんだけを持つ。タグは「望ましい」枠なのでまだテーブルを作らない。
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions Session[]
+  threads  Thread[]
+  comments Comment[]
+}
+
+// セッションは DB で管理する。
+// id にはブラウザへ渡した値そのものではなく、その SHA-256 ハッシュを入れる。
+// （DB が漏れても、そのままログインに使える値は入っていない状態にする）
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum ThreadStatus {
+  OPEN
+  CLOSED
+}
+
+enum Visibility {
+  PUBLIC // 誰でも閲覧できる
+  LIMITED // URL を知っている人だけ（画面は Phase 1.5）
+  PRIVATE // 自分だけ
+}
+
+// スレッド自身は本文を持たない。
+// 本文にあたるものは最初のコメント（プロトタイプの thread-create.html と同じ考え方）。
+model Thread {
+  id         String       @id @default(cuid())
+  title      String
+  status     ThreadStatus @default(OPEN)
+  visibility Visibility   @default(PRIVATE)
+  authorId   String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments Comment[]
+
+  @@index([authorId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+  threadId  String
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+}

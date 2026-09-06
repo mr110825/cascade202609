@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# Prisma が生成するクライアント（npm install 時に prisma generate で自動生成される）
+/src/generated
