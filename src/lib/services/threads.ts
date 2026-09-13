@@ -66,3 +66,33 @@ export async function countMyThreadsByStatus(userId: string) {
   });
   return { all, open, closed: all - open };
 }
+
+// スレッド詳細。閲覧してよい相手かどうかもここで判定する。
+// 見てはいけない場合は null を返し、呼び出し側で 404 にする。
+export async function getThreadForViewer(
+  threadId: string,
+  viewerId: string | null,
+) {
+  const thread = await prisma.thread.findUnique({
+    where: { id: threadId },
+    include: {
+      author: { select: { id: true, name: true } },
+      comments: {
+        include: { author: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  if (!thread) {
+    return null;
+  }
+
+  // 非公開スレッドは作成者本人だけ。
+  // 限定公開は「URL を知っていれば見られる」なので、ここでは弾かない。
+  if (thread.visibility === "PRIVATE" && thread.author.id !== viewerId) {
+    return null;
+  }
+
+  return thread;
+}
