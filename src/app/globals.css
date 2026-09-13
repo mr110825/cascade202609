@@ -286,6 +286,72 @@
     font-weight: 700;
   }
 
+  /* --- Badges --- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-open {
+    background: rgba(122, 184, 141, 0.18);
+    color: var(--color-success);
+  }
+  .badge-closed {
+    background: rgba(201, 168, 98, 0.18);
+    color: var(--color-warning);
+  }
+  .badge-public {
+    background: rgba(107, 159, 212, 0.1);
+    color: var(--color-primary);
+  }
+  .badge-limited {
+    background: rgba(201, 168, 98, 0.15);
+    color: var(--color-warning);
+  }
+  .badge-private {
+    background: rgba(94, 118, 133, 0.25);
+    color: var(--color-text-secondary);
+  }
+
+  /* --- Thread card（一覧の1行） --- */
+  .thread-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .thread-card__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .thread-card__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    flex: 1;
+  }
+  .thread-card__title a {
+    color: inherit;
+  }
+  .thread-card__title a:hover {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+  .thread-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
   /* --- Avatar --- */
   .avatar {
     width: 32px;
@@ -299,6 +365,12 @@
     font-size: 14px;
     font-weight: 600;
     flex-shrink: 0;
+  }
+
+  .avatar-sm {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
   }
 
   /* --- Filter --- */

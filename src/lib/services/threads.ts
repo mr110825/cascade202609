@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Visibility } from "@/generated/prisma/enums";
+import type { ThreadStatus, Visibility } from "@/generated/prisma/enums";
 
 // スレッドまわりの処理。
 // 「誰が」操作しているのかを必ず引数で受け取り、
@@ -35,4 +35,34 @@ export async function createThread(
   });
 
   return { ok: true, threadId: thread.id };
+}
+
+// ダッシュボード用。自分のスレッドを全部返す（公開設定を問わない）。
+export async function listMyThreads(
+  userId: string,
+  options: {
+    status?: ThreadStatus;
+    visibility?: Visibility;
+  },
+) {
+  return prisma.thread.findMany({
+    where: {
+      authorId: userId,
+      ...(options.status ? { status: options.status } : {}),
+      ...(options.visibility ? { visibility: options.visibility } : {}),
+    },
+    include: {
+      _count: { select: { comments: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+}
+
+// ダッシュボードのフィルタに出す件数。
+export async function countMyThreadsByStatus(userId: string) {
+  const all = await prisma.thread.count({ where: { authorId: userId } });
+  const open = await prisma.thread.count({
+    where: { authorId: userId, status: "OPEN" },
+  });
+  return { all, open, closed: all - open };
 }
