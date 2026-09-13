@@ -5,15 +5,23 @@ import { getCurrentUser } from "@/lib/auth";
 import { getThreadForViewer } from "@/lib/services/threads";
 import { StatusBadge, VisibilityBadge } from "@/components/Badges";
 import { formatDate, formatDateTime, initialOf } from "@/lib/format";
+import { updateThreadTitleAction } from "@/app/actions/threads";
 
 // スレッド詳細。Part3 の Pattern B に合わせて2カラム。
 // メタ情報と操作ボタンは右サイドバーに集約する。
+//
+// 「編集中かどうか」は URL の ?edit= で表している。
+//   ?edit=title → タイトルを編集
+// こうすると状態を持つ必要がなくなり、全部 Server Component のままで書ける。
 export default async function ThreadDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ edit?: string }>;
 }) {
   const { id } = await params;
+  const { edit } = await searchParams;
 
   const user = await getCurrentUser();
   const thread = await getThreadForViewer(id, user?.id ?? null);
@@ -25,6 +33,9 @@ export default async function ThreadDetailPage({
     notFound();
   }
 
+  const isOwner = user !== null && user.id === thread.author.id;
+  const threadPath = `/threads/${thread.id}`;
+
   return (
     <main className="layout-body layout-two-column">
       {/* --- メインカラム --- */}
@@ -34,9 +45,40 @@ export default async function ThreadDetailPage({
           マイスレッド
         </Link>
 
-        <div className="mb-4 flex items-start gap-2">
-          <h1 className="flex-1 text-2xl font-bold">{thread.title}</h1>
-        </div>
+        {isOwner && edit === "title" ? (
+          <form action={updateThreadTitleAction} className="mb-4">
+            <input type="hidden" name="threadId" value={thread.id} />
+            <div className="form-group">
+              <input
+                name="title"
+                type="text"
+                className="input"
+                defaultValue={thread.title}
+                required
+              />
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" className="btn btn-primary btn-sm">
+                保存
+              </button>
+              <Link href={threadPath} className="btn btn-ghost btn-sm">
+                キャンセル
+              </Link>
+            </div>
+          </form>
+        ) : (
+          <div className="mb-4 flex items-start gap-2">
+            <h1 className="flex-1 text-2xl font-bold">{thread.title}</h1>
+            {isOwner && (
+              <Link
+                href={`${threadPath}?edit=title`}
+                className="btn btn-ghost btn-sm"
+              >
+                タイトルを編集
+              </Link>
+            )}
+          </div>
+        )}
 
         {/* --- コメント一覧 --- */}
         <div>

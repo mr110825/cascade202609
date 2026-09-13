@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createThread } from "@/lib/services/threads";
+import { createThread, updateThreadTitle } from "@/lib/services/threads";
 import { requireUser } from "@/lib/auth";
 import { text, type FormState } from "@/lib/form-state";
 import type { Visibility } from "@/generated/prisma/enums";
@@ -25,4 +25,17 @@ export async function createThreadAction(
   }
 
   redirect(`/threads/${result.threadId}`);
+}
+
+// ここから下は結果を画面に出す必要がないので、
+// <form action={...}> に直接渡せる形（FormData だけを受け取る）にしている。
+// 終わったらスレッド詳細へ戻す。
+
+export async function updateThreadTitleAction(formData: FormData) {
+  const user = await requireUser();
+  const threadId = text(formData, "threadId");
+
+  await updateThreadTitle(user.id, threadId, text(formData, "title"));
+
+  redirect(`/threads/${threadId}`);
 }

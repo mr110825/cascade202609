@@ -9,6 +9,8 @@ type CreateResult =
   | { ok: true; threadId: string }
   | { ok: false; error: string };
 
+type UpdateResult = { ok: true } | { ok: false; error: string };
+
 export async function createThread(
   userId: string,
   title: string,
@@ -95,4 +97,26 @@ export async function getThreadForViewer(
   }
 
   return thread;
+}
+
+// 以下の更新系はすべて updateMany を使い、where に authorId を入れている。
+// 他人のスレッドを指定しても更新件数が 0 件になるだけで、書き換わらない。
+export async function updateThreadTitle(
+  userId: string,
+  threadId: string,
+  title: string,
+): Promise<UpdateResult> {
+  if (!title.trim()) {
+    return { ok: false, error: "タイトルを入力してください" };
+  }
+
+  const result = await prisma.thread.updateMany({
+    where: { id: threadId, authorId: userId },
+    data: { title: title.trim() },
+  });
+
+  if (result.count === 0) {
+    return { ok: false, error: "スレッドが見つかりません" };
+  }
+  return { ok: true };
 }
