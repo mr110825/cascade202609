@@ -396,6 +396,14 @@
     font-weight: 600;
     color: var(--color-text-primary);
   }
+  /* 編集・削除は本文の右上に寄せる（ヘッダーが flex なので auto で押し出す） */
+  .comment__actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
   /* --- Markdown 本文（コメント表示・プレビュー共通） ---
      Tailwind の preflight が h1〜h6 や ul のサイズ・記号を消すので、
      Markdown から出てくる要素はここで作り直す。 */
@@ -495,6 +503,15 @@
   }
   .markdown img {
     max-width: 100%;
+  }
+
+  /* 投稿フォームの Preview タブ。入力欄と同じ見た目の箱に Markdown を出す */
+  .comment-preview {
+    min-height: 120px;
+    padding: 10px 12px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
   }
 
   /* --- 右サイドバー（Pattern B。スレッド詳細のメタ情報） --- */

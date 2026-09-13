@@ -4,19 +4,26 @@ import { ArrowLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getThreadForViewer } from "@/lib/services/threads";
 import { StatusBadge, VisibilityBadge } from "@/components/Badges";
+import { MarkdownBody } from "@/components/MarkdownBody";
+import { CommentForm } from "@/components/forms/CommentForm";
 import { formatDate, formatDateTime, initialOf } from "@/lib/format";
 import {
   updateThreadTitleAction,
   updateThreadStatusAction,
   deleteThreadAction,
 } from "@/app/actions/threads";
+import {
+  updateCommentAction,
+  deleteCommentAction,
+} from "@/app/actions/comments";
 
 // スレッド詳細。Part3 の Pattern B に合わせて2カラム。
 // メタ情報と操作ボタンは右サイドバーに集約する。
 //
 // 「編集中かどうか」は URL の ?edit= で表している。
-//   ?edit=title → タイトルを編集
-// こうすると状態を持つ必要がなくなり、全部 Server Component のままで書ける。
+//   ?edit=title      → タイトルを編集
+//   ?edit=<コメントID> → そのコメントだけを編集
+// こうすると状態を持つ必要がなくなり、編集フォームも Server Component のまま書ける。
 export default async function ThreadDetailPage({
   params,
   searchParams,
@@ -90,19 +97,94 @@ export default async function ThreadDetailPage({
             <p className="form-hint py-4">まだコメントがありません。</p>
           )}
 
-          {thread.comments.map((comment) => (
-            <div key={comment.id} className="comment">
-              <div className="avatar">{initialOf(comment.author.name)}</div>
-              <div className="comment__body">
-                <div className="comment__header">
-                  <span className="comment__author">{comment.author.name}</span>
-                  <span>{formatDateTime(comment.createdAt)}</span>
+          {thread.comments.map((comment) => {
+            const isCommentOwner = user !== null && user.id === comment.author.id;
+            const isEditing = isCommentOwner && edit === comment.id;
+
+            return (
+              <div key={comment.id} className="comment">
+                <div className="avatar">{initialOf(comment.author.name)}</div>
+                <div className="comment__body">
+                  <div className="comment__header">
+                    <span className="comment__author">
+                      {comment.author.name}
+                    </span>
+                    <span>{formatDateTime(comment.createdAt)}</span>
+                    {comment.updatedAt.getTime() !==
+                      comment.createdAt.getTime() && <span>(編集済み)</span>}
+
+                    {isCommentOwner && !isEditing && (
+                      <span className="comment__actions">
+                        <Link
+                          href={`${threadPath}?edit=${comment.id}`}
+                          className="btn btn-ghost btn-sm"
+                        >
+                          編集
+                        </Link>
+                        <form action={deleteCommentAction}>
+                          <input
+                            type="hidden"
+                            name="threadId"
+                            value={thread.id}
+                          />
+                          <input
+                            type="hidden"
+                            name="commentId"
+                            value={comment.id}
+                          />
+                          <button
+                            type="submit"
+                            className="btn btn-ghost btn-sm"
+                          >
+                            削除
+                          </button>
+                        </form>
+                      </span>
+                    )}
+                  </div>
+
+                  {isEditing ? (
+                    <form action={updateCommentAction}>
+                      <input type="hidden" name="threadId" value={thread.id} />
+                      <input
+                        type="hidden"
+                        name="commentId"
+                        value={comment.id}
+                      />
+                      <div className="form-group">
+                        <textarea
+                          name="body"
+                          className="input textarea"
+                          defaultValue={comment.body}
+                          required
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          className="btn btn-primary btn-sm"
+                        >
+                          保存
+                        </button>
+                        <Link href={threadPath} className="btn btn-ghost btn-sm">
+                          キャンセル
+                        </Link>
+                      </div>
+                    </form>
+                  ) : (
+                    <MarkdownBody body={comment.body} />
+                  )}
                 </div>
-                {/* Markdown 表示は M3 で入れる。今は改行だけ活かして素のまま出す */}
-                <p className="whitespace-pre-wrap">{comment.body}</p>
               </div>
-            </div>
-          ))}
+            );
+          })}
+
+          {/* 書き込めるのはスレッド作成者だけ（services/comments.ts の判定に合わせる）。
+              key にコメント件数を渡しているので、投稿が成功して件数が変わると
+              フォームが作り直され、入力欄が空に戻る。 */}
+          {isOwner && (
+            <CommentForm key={thread.comments.length} threadId={thread.id} />
+          )}
         </div>
       </div>
 
