@@ -166,3 +166,19 @@ export async function listPublicThreads(options: { status?: ThreadStatus }) {
     orderBy: { updatedAt: "desc" },
   });
 }
+
+export async function updateThreadVisibility(
+  userId: string,
+  threadId: string,
+  visibility: Visibility,
+): Promise<UpdateResult> {
+  const result = await prisma.thread.updateMany({
+    where: { id: threadId, authorId: userId },
+    data: { visibility },
+  });
+
+  if (result.count === 0) {
+    return { ok: false, error: "スレッドが見つかりません" };
+  }
+  return { ok: true };
+}
