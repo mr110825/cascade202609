@@ -1,7 +1,11 @@
 "use server";
 
-import { redirect } from "next/navigation";
-import { createThread, updateThreadTitle } from "@/lib/services/threads";
+import { notFound, redirect } from "next/navigation";
+import {
+  createThread,
+  updateThreadTitle,
+  deleteThread,
+} from "@/lib/services/threads";
 import { requireUser } from "@/lib/auth";
 import { text, type FormState } from "@/lib/form-state";
 import type { Visibility } from "@/generated/prisma/enums";
@@ -38,4 +42,19 @@ export async function updateThreadTitleAction(formData: FormData) {
   await updateThreadTitle(user.id, threadId, text(formData, "title"));
 
   redirect(`/threads/${threadId}`);
+}
+
+export async function deleteThreadAction(formData: FormData) {
+  const user = await requireUser();
+
+  const result = await deleteThread(user.id, text(formData, "threadId"));
+
+  // 他人のスレッドを指定された場合は削除件数が 0 件になる。
+  // 「あなたには権限がありません」(403) だと、その ID のスレッドが
+  // 実在することを教えてしまうので、存在しないとき（404）と同じ扱いにする。
+  if (!result.ok) {
+    notFound();
+  }
+
+  redirect("/dashboard");
 }

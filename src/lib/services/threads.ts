@@ -120,3 +120,18 @@ export async function updateThreadTitle(
   }
   return { ok: true };
 }
+
+export async function deleteThread(
+  userId: string,
+  threadId: string,
+): Promise<UpdateResult> {
+  // コメントは schema.prisma の onDelete: Cascade で一緒に消える。
+  const result = await prisma.thread.deleteMany({
+    where: { id: threadId, authorId: userId },
+  });
+
+  if (result.count === 0) {
+    return { ok: false, error: "スレッドが見つかりません" };
+  }
+  return { ok: true };
+}

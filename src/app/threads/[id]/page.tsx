@@ -5,7 +5,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { getThreadForViewer } from "@/lib/services/threads";
 import { StatusBadge, VisibilityBadge } from "@/components/Badges";
 import { formatDate, formatDateTime, initialOf } from "@/lib/format";
-import { updateThreadTitleAction } from "@/app/actions/threads";
+import {
+  updateThreadTitleAction,
+  deleteThreadAction,
+} from "@/app/actions/threads";
 
 // スレッド詳細。Part3 の Pattern B に合わせて2カラム。
 // メタ情報と操作ボタンは右サイドバーに集約する。
@@ -139,6 +142,17 @@ export default async function ThreadDetailPage({
           <div className="sidebar-right__label">コメント</div>
           <div className="sidebar-right__value">{thread.comments.length}件</div>
         </div>
+
+        {isOwner && (
+          <div className="sidebar-right__section">
+            <form action={deleteThreadAction}>
+              <input type="hidden" name="threadId" value={thread.id} />
+              <button type="submit" className="btn btn-danger btn-sm btn-block">
+                このスレッドを削除
+              </button>
+            </form>
+          </div>
+        )}
       </aside>
     </main>
   );
