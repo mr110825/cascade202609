@@ -7,6 +7,7 @@ import { StatusBadge, VisibilityBadge } from "@/components/Badges";
 import { formatDate, formatDateTime, initialOf } from "@/lib/format";
 import {
   updateThreadTitleAction,
+  updateThreadStatusAction,
   deleteThreadAction,
 } from "@/app/actions/threads";
 
@@ -112,6 +113,22 @@ export default async function ThreadDetailPage({
           <div className="sidebar-right__value">
             <StatusBadge status={thread.status} />
           </div>
+          {isOwner && (
+            <form action={updateThreadStatusAction} className="mt-2">
+              <input type="hidden" name="threadId" value={thread.id} />
+              {/* 送信ボタン自身に name と value を持たせている。
+                  押したボタンの値だけが FormData に入るので、
+                  hidden input を別に用意しなくてよい */}
+              <button
+                type="submit"
+                name="status"
+                value={thread.status === "OPEN" ? "CLOSED" : "OPEN"}
+                className="btn btn-secondary btn-sm btn-block"
+              >
+                {thread.status === "OPEN" ? "Closedにする" : "Openに戻す"}
+              </button>
+            </form>
+          )}
         </div>
 
         <div className="sidebar-right__section">

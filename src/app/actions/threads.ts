@@ -4,11 +4,12 @@ import { notFound, redirect } from "next/navigation";
 import {
   createThread,
   updateThreadTitle,
+  updateThreadStatus,
   deleteThread,
 } from "@/lib/services/threads";
 import { requireUser } from "@/lib/auth";
 import { text, type FormState } from "@/lib/form-state";
-import type { Visibility } from "@/generated/prisma/enums";
+import type { ThreadStatus, Visibility } from "@/generated/prisma/enums";
 
 // 作成だけは入力エラーを画面に出したいので useActionState 用の形にしている。
 export async function createThreadAction(
@@ -40,6 +41,19 @@ export async function updateThreadTitleAction(formData: FormData) {
   const threadId = text(formData, "threadId");
 
   await updateThreadTitle(user.id, threadId, text(formData, "title"));
+
+  redirect(`/threads/${threadId}`);
+}
+
+export async function updateThreadStatusAction(formData: FormData) {
+  const user = await requireUser();
+  const threadId = text(formData, "threadId");
+
+  await updateThreadStatus(
+    user.id,
+    threadId,
+    text(formData, "status") as ThreadStatus,
+  );
 
   redirect(`/threads/${threadId}`);
 }

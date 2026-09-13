@@ -135,3 +135,19 @@ export async function deleteThread(
   }
   return { ok: true };
 }
+
+export async function updateThreadStatus(
+  userId: string,
+  threadId: string,
+  status: ThreadStatus,
+): Promise<UpdateResult> {
+  const result = await prisma.thread.updateMany({
+    where: { id: threadId, authorId: userId },
+    data: { status },
+  });
+
+  if (result.count === 0) {
+    return { ok: false, error: "スレッドが見つかりません" };
+  }
+  return { ok: true };
+}
