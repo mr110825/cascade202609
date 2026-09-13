@@ -151,3 +151,18 @@ export async function updateThreadStatus(
   }
   return { ok: true };
 }
+
+// トップページ・公開API 用。公開スレッドだけを新しい順に返す。
+export async function listPublicThreads(options: { status?: ThreadStatus }) {
+  return prisma.thread.findMany({
+    where: {
+      visibility: "PUBLIC",
+      ...(options.status ? { status: options.status } : {}),
+    },
+    include: {
+      author: { select: { name: true } },
+      _count: { select: { comments: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+}
