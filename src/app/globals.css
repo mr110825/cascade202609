@@ -224,6 +224,13 @@
     background: var(--color-bg-secondary);
     width: 100%;
   }
+  .textarea {
+    padding: 12px;
+    min-height: 160px;
+    height: auto;
+    line-height: 1.7;
+    resize: vertical;
+  }
   .input:focus {
     outline: none;
     border-color: var(--color-primary);
@@ -279,6 +286,72 @@
     font-weight: 700;
   }
 
+  /* --- Badges --- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-open {
+    background: rgba(122, 184, 141, 0.18);
+    color: var(--color-success);
+  }
+  .badge-closed {
+    background: rgba(201, 168, 98, 0.18);
+    color: var(--color-warning);
+  }
+  .badge-public {
+    background: rgba(107, 159, 212, 0.1);
+    color: var(--color-primary);
+  }
+  .badge-limited {
+    background: rgba(201, 168, 98, 0.15);
+    color: var(--color-warning);
+  }
+  .badge-private {
+    background: rgba(94, 118, 133, 0.25);
+    color: var(--color-text-secondary);
+  }
+
+  /* --- Thread card（一覧の1行） --- */
+  .thread-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .thread-card__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .thread-card__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    flex: 1;
+  }
+  .thread-card__title a {
+    color: inherit;
+  }
+  .thread-card__title a:hover {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+  .thread-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+
   /* --- Avatar --- */
   .avatar {
     width: 32px;
@@ -292,6 +365,109 @@
     font-size: 14px;
     font-weight: 600;
     flex-shrink: 0;
+  }
+
+  .avatar-sm {
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  /* --- Comment --- */
+  .comment {
+    display: flex;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .comment__body {
+    flex: 1;
+    min-width: 0;
+  }
+  .comment__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+  .comment__author {
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  /* --- 右サイドバー（Pattern B。スレッド詳細のメタ情報） --- */
+  .sidebar-right {
+    position: sticky;
+    top: 84px;
+  }
+  .sidebar-right__section {
+    margin-bottom: 24px;
+  }
+  .sidebar-right__label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-secondary);
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .sidebar-right__value {
+    font-size: 14px;
+    color: var(--color-text-primary);
+  }
+
+  /* --- Filter --- */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--color-border);
+    flex-wrap: wrap;
+  }
+  .filter-group {
+    display: flex;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    overflow: hidden;
+  }
+  .filter-group__btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border: none;
+    border-right: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+  .filter-group__btn:last-child {
+    border-right: none;
+  }
+  .filter-group__btn:hover {
+    text-decoration: none;
+  }
+  .filter-group__btn.active {
+    background: var(--color-primary);
+    color: var(--color-text-on-primary);
+  }
+  /* ラジオボタンを中に入れた選択肢用。
+     チェックされている項目だけ色を変える（:has は「〜を含む要素」を指す） */
+  .filter-group__btn input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .filter-group__btn:has(input:checked) {
+    background: var(--color-primary);
+    color: var(--color-text-on-primary);
   }
 
   /* --- Auth card --- */
