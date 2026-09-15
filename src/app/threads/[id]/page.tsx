@@ -10,12 +10,22 @@ import { formatDate, formatDateTime, initialOf } from "@/lib/format";
 import {
   updateThreadTitleAction,
   updateThreadStatusAction,
+  updateThreadVisibilityAction,
   deleteThreadAction,
 } from "@/app/actions/threads";
 import {
   updateCommentAction,
   deleteCommentAction,
 } from "@/app/actions/comments";
+import type { Visibility } from "@/generated/prisma/enums";
+
+// 公開設定の選択肢。ダッシュボードのフィルタと同じ並び・同じラベルにしている。
+// Visibility 型を付けているので、enum にない値を書くとビルドで落ちる。
+const VISIBILITY_OPTIONS: { value: Visibility; label: string }[] = [
+  { value: "PUBLIC", label: "公開" },
+  { value: "LIMITED", label: "限定公開" },
+  { value: "PRIVATE", label: "非公開" },
+];
 
 // スレッド詳細。Part3 の Pattern B に合わせて2カラム。
 // メタ情報と操作ボタンは右サイドバーに集約する。
@@ -218,6 +228,28 @@ export default async function ThreadDetailPage({
           <div className="sidebar-right__value">
             <VisibilityBadge visibility={thread.visibility} />
           </div>
+          {isOwner && (
+            <form action={updateThreadVisibilityAction} className="mt-2">
+              <input type="hidden" name="threadId" value={thread.id} />
+              {/* ステータス変更と同じで、押したボタンの name/value だけが
+                  FormData に入る。3つ並べても hidden input は1つでよい */}
+              <div className="filter-group">
+                {VISIBILITY_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="submit"
+                    name="visibility"
+                    value={option.value}
+                    className={`filter-group__btn ${
+                      thread.visibility === option.value ? "active" : ""
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </form>
+          )}
         </div>
 
         <div className="sidebar-right__section">
