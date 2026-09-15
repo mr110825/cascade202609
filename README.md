@@ -22,26 +22,36 @@ PostgreSQL をローカルに入れる必要はない（Docker で起動する�
 
 ## セットアップ
 
-初回だけ、上から順に実行する。
+初回だけ、上から順に実行する。**このブロックはまとめてコピペしてよい。**
 
 ```bash
 git clone https://github.com/mr110825/cascade202609.git
 cd cascade202609
 
 cp .env.example .env
+sed -i "s/changeme/$(grep POSTGRES_PASSWORD docker-compose.yml | cut -d: -f2 | tr -cd '[:alnum:]_-')/" .env
+
+docker compose up -d
+docker compose ps
+
+npm ci
+npx prisma migrate deploy
+npm run dev
 ```
 
-**`.env` の `changeme` を書き換える。** `docker-compose.yml` の
-`POSTGRES_PASSWORD` と同じ値にすること（この2つがずれていると DB に繋がらない）。
+| コマンド | 何をするか | 通ったときに見えるもの |
+|---|---|---|
+| `cp .env.example .env` | 環境変数ファイルを作る | |
+| `sed -i "s/changeme/…/" .env` | `.env` のパスワードを `docker-compose.yml` から引いて揃える | `grep -c changeme .env` が `0` |
+| `docker compose up -d` | PostgreSQL 17 を起動する。healthy になるまで数秒かかる | `Container … Started` |
+| `docker compose ps` | DB が上がったか確認する | `Up (healthy)` と `0.0.0.0:5434->5432/tcp` |
+| `npm ci` | 依存を入れる。`postinstall` で `prisma generate` も走る | `added 706 packages` |
+| `npx prisma migrate deploy` | `prisma/migrations/` を適用する | `All migrations have been successfully applied.` |
+| `npm run dev` | 開発サーバーを起動する | `Ready in …` |
 
-```bash
-docker compose up -d          # PostgreSQL 17 を起動。healthy になるまで数秒待つ
-docker compose ps             # STATUS が Up (healthy) を確認
-
-npm ci                        # postinstall で prisma generate も走る
-npx prisma migrate deploy     # prisma/migrations/ のマイグレーションを適用
-npm run dev                   # http://localhost:3000
-```
+パスワードを手で写さないのは、`.env` と `docker-compose.yml` がずれると DB に繋がらないため。
+1箇所から引けばずらしようがない。**`docker-compose.yml` のパスワードはローカル専用の捨て値**であり、
+本番では使わない（本番の値は環境変数で渡す）。
 
 `npm ci` の `postinstall`（`prisma generate`）は `DATABASE_URL` を読まないので、
 `.env` が無くても通る。DB に繋ぐのは `prisma migrate deploy` から。
@@ -50,18 +60,18 @@ npm run dev                   # http://localhost:3000
 
 ### 停止と再開
 
-```bash
-docker compose stop           # DB を止める（データは残る）
-docker compose start          # 再開
-docker compose down -v        # データごと消す。次回は migrate deploy からやり直し
-```
+| コマンド | 内容 |
+|---|---|
+| `docker compose stop` | DB を止める（データは残る） |
+| `docker compose start` | 再開する |
+| `docker compose down -v` | **データごと消す。** 次回は `migrate deploy` からやり直し |
 
 ### 詰まったら
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
 | `Bind for 0.0.0.0:5434 failed: port is already allocated` | 5434 を他のコンテナが使っている | 使っている側を止めるか、`docker-compose.yml` の `ports` と `.env` の URL を別番号に揃える。**失敗したコンテナが残るので `docker compose down` してから `up -d` し直す** |
-| `P1000: Authentication failed against database server` | `.env` のパスワードが `docker-compose.yml` と違う（`changeme` のまま） | `.env` の値を `POSTGRES_PASSWORD` に合わせる |
+| `P1000: Authentication failed against database server` | `.env` のパスワードが `docker-compose.yml` と違う | セットアップの `sed` の行を再実行し `grep -c changeme .env` が `0` になるのを確認 |
 | `P1001: Can't reach database server` | DB が起動していない／ポートが公開されていない | `docker compose ps` で `Up (healthy)` と `0.0.0.0:5434->5432/tcp` を確認 |
 
 ---
