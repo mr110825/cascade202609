@@ -14,11 +14,12 @@ const VISIBILITIES: { value: Visibility; label: string }[] = [
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; visibility?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; visibility?: string }>;
 }) {
   const user = await requireUser();
   const params = await searchParams;
 
+  const query = params.q ?? "";
   // URL のクエリはユーザーが自由に書ける。
   // 想定した値でなければ「絞り込みなし」に倒す。
   const status =
@@ -29,12 +30,13 @@ export default async function DashboardPage({
     ? (params.visibility as Visibility)
     : undefined;
 
-  const threads = await listMyThreads(user.id, { status, visibility });
+  const threads = await listMyThreads(user.id, { query, status, visibility });
   const counts = await countMyThreadsByStatus(user.id);
 
   // 今の条件を保ったまま、一部だけ差し替えたリンクを作る。
   function hrefWith(changes: Record<string, string | undefined>) {
     const current: Record<string, string | undefined> = {
+      q: query || undefined,
       status,
       visibility,
       ...changes,
@@ -98,6 +100,12 @@ export default async function DashboardPage({
             </Link>
           ))}
         </div>
+
+        {query && (
+          <span className="form-hint">
+            「{query}」の検索結果 {threads.length}件
+          </span>
+        )}
       </div>
 
       {threads.length === 0 ? (

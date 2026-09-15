@@ -43,6 +43,7 @@ export async function createThread(
 export async function listMyThreads(
   userId: string,
   options: {
+    query?: string;
     status?: ThreadStatus;
     visibility?: Visibility;
   },
@@ -50,6 +51,7 @@ export async function listMyThreads(
   return prisma.thread.findMany({
     where: {
       authorId: userId,
+      ...titleFilter(options.query),
       ...(options.status ? { status: options.status } : {}),
       ...(options.visibility ? { visibility: options.visibility } : {}),
     },
@@ -152,11 +154,26 @@ export async function updateThreadStatus(
   return { ok: true };
 }
 
-// トップページ・公開API 用。公開スレッドだけを新しい順に返す。
-export async function listPublicThreads(options: { status?: ThreadStatus }) {
+// 検索は ILIKE（大文字小文字を無視した部分一致）で行う。
+// Prisma では contains + mode: "insensitive" がそれにあたる。
+// Phase 1 は数千件規模なのでインデックスなしで十分速い。
+// 将来遅くなったら pg_bigm のインデックスを 1 本張る（SQL は変えなくてよい）。
+function titleFilter(query: string | undefined) {
+  if (!query) {
+    return {};
+  }
+  return { title: { contains: query, mode: "insensitive" as const } };
+}
+
+// トップページ用。公開スレッドだけを新しい順に返す。
+export async function listPublicThreads(options: {
+  query?: string;
+  status?: ThreadStatus;
+}) {
   return prisma.thread.findMany({
     where: {
       visibility: "PUBLIC",
+      ...titleFilter(options.query),
       ...(options.status ? { status: options.status } : {}),
     },
     include: {

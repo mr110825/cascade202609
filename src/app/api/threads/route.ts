@@ -7,13 +7,14 @@ import type { ThreadStatus, Visibility } from "@/generated/prisma/enums";
 // 入力の検証も権限の判定もサービス側にあるので、ここは
 // HTTP の作法（ステータスコードと JSON）だけを担当する。
 
-// GET /api/threads?status=OPEN
+// GET /api/threads?q=...&status=OPEN
 // 公開スレッドの一覧。ログインしていなくても呼べる。
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const statusParam = searchParams.get("status");
 
   const threads = await listPublicThreads({
+    query: searchParams.get("q") ?? undefined,
     status:
       statusParam === "OPEN" || statusParam === "CLOSED"
         ? (statusParam as ThreadStatus)
