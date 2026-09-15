@@ -5,6 +5,7 @@ import {
   createThread,
   updateThreadTitle,
   updateThreadStatus,
+  updateThreadVisibility,
   deleteThread,
 } from "@/lib/services/threads";
 import { requireUser } from "@/lib/auth";
@@ -53,6 +54,19 @@ export async function updateThreadStatusAction(formData: FormData) {
     user.id,
     threadId,
     text(formData, "status") as ThreadStatus,
+  );
+
+  redirect(`/threads/${threadId}`);
+}
+
+export async function updateThreadVisibilityAction(formData: FormData) {
+  const user = await requireUser();
+  const threadId = text(formData, "threadId");
+
+  await updateThreadVisibility(
+    user.id,
+    threadId,
+    text(formData, "visibility") as Visibility,
   );
 
   redirect(`/threads/${threadId}`);
