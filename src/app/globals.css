@@ -625,4 +625,26 @@
     color: var(--color-text-primary);
     margin-bottom: 8px;
   }
+
+  /* --- 静的ページ（利用規約・プライバシーポリシー） ---
+     この2画面は Markdown ではなく素の JSX なので、
+     h1 / h2 / ul / p に見た目が付いていない。ここで付ける。 */
+  .static-page h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 24px;
+  }
+  .static-page h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 24px 0 8px;
+  }
+  .static-page ul {
+    padding-left: 24px;
+    list-style: disc;
+    margin-bottom: 12px;
+  }
+  .static-page p {
+    margin-bottom: 12px;
+  }
 }
