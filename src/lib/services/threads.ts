@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { ThreadStatus, Visibility } from "@/generated/prisma/enums";
+import { MAX_COMMENT_BODY_LENGTH } from "@/lib/limits";
 
 // スレッドまわりの処理。
 // 「誰が」操作しているのかを必ず引数で受け取り、
@@ -22,6 +23,14 @@ export async function createThread(
   }
   if (title.length > 120) {
     return { ok: false, error: "タイトルは120文字以内で入力してください" };
+  }
+  // 最初のコメントは下で nested create しており createComment を通らないため、
+  // 同じ上限をここでも確かめる。判定は createComment と揃えて trim 後の長さで行う。
+  if (firstComment.trim().length > MAX_COMMENT_BODY_LENGTH) {
+    return {
+      ok: false,
+      error: `最初のコメントは${MAX_COMMENT_BODY_LENGTH}文字以内で入力してください`,
+    };
   }
 
   const thread = await prisma.thread.create({

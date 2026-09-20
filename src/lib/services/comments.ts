@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getThreadForViewer } from "@/lib/services/threads";
+import { MAX_COMMENT_BODY_LENGTH } from "@/lib/limits";
 
 // コメントまわりの処理。threads.ts と同じ方針で、
 // 「誰が」操作しているのかを必ず第1引数で受け取る。
@@ -18,8 +19,6 @@ type CreateResult =
 type UpdateResult =
   | { ok: true }
   | { ok: false; error: string; reason: "invalid" | "notFound" };
-
-const MAX_BODY_LENGTH = 10000;
 
 // 一覧は「そのスレッドを見てよいか」の判定がそのまま使える。
 // 同じ判定を書き直さず、threads.ts の getThreadForViewer に相乗りする。
@@ -49,10 +48,10 @@ export async function createComment(
       reason: "invalid",
     };
   }
-  if (trimmed.length > MAX_BODY_LENGTH) {
+  if (trimmed.length > MAX_COMMENT_BODY_LENGTH) {
     return {
       ok: false,
-      error: `コメントは${MAX_BODY_LENGTH}文字以内で入力してください`,
+      error: `コメントは${MAX_COMMENT_BODY_LENGTH}文字以内で入力してください`,
       reason: "invalid",
     };
   }
@@ -100,10 +99,10 @@ export async function updateComment(
       reason: "invalid",
     };
   }
-  if (trimmed.length > MAX_BODY_LENGTH) {
+  if (trimmed.length > MAX_COMMENT_BODY_LENGTH) {
     return {
       ok: false,
-      error: `コメントは${MAX_BODY_LENGTH}文字以内で入力してください`,
+      error: `コメントは${MAX_COMMENT_BODY_LENGTH}文字以内で入力してください`,
       reason: "invalid",
     };
   }
