@@ -43,11 +43,6 @@ export async function registerUser(
     return { ok: false, error: "このメールアドレスは登録済みです" };
   }
 
-  const nameTaken = await prisma.user.findUnique({ where: { name } });
-  if (nameTaken) {
-    return { ok: false, error: "このユーザー名は使われています" };
-  }
-
   const user = await prisma.user.create({
     data: {
       email,
@@ -88,14 +83,6 @@ export async function changeName(
   }
   if (name.length > 32) {
     return { ok: false, error: "ユーザー名は32文字以内で入力してください" };
-  }
-
-  // name は unique なので、そのまま update すると他人と衝突したときに
-  // Prisma が例外を投げて 500 になる。先に取られていないか確かめて、
-  // 画面に出せるエラーとして返す。
-  const taken = await prisma.user.findUnique({ where: { name } });
-  if (taken && taken.id !== userId) {
-    return { ok: false, error: "このユーザー名は使われています" };
   }
 
   await prisma.user.update({ where: { id: userId }, data: { name } });
