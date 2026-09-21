@@ -1,16 +1,31 @@
 // 画面に出す日時の整形。
+// 本番の SSR コンピュートは TZ=UTC で動くため、date.getHours() のような
+// 実行環境のローカルTZに依存するメソッドは使わず、明示的に Asia/Tokyo で組み立てる。
+
+const JST = new Intl.DateTimeFormat("ja-JP", {
+  timeZone: "Asia/Tokyo",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function partsOf(date: Date): Record<string, string> {
+  return Object.fromEntries(JST.formatToParts(date).map((x) => [x.type, x.value]));
+}
 
 export function formatDate(date: Date): string {
-  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+  const p = partsOf(date);
+  return `${p.year}年${p.month}月${p.day}日`;
 }
 
 export function formatDateTime(date: Date): string {
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  return `${formatDate(date)} ${hour}:${minute}`;
+  const p = partsOf(date);
+  return `${p.year}年${p.month}月${p.day}日 ${p.hour}:${p.minute}`;
 }
 
-// 「2時間前」のような相対表示。一覧の更新日時に使う。
+// 「2時間前」のような相対表示。一覧の更新日時に使う。エポック差分なので TZ 非依存。
 export function formatRelative(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
 
