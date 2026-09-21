@@ -10,6 +10,7 @@ frontend:
         - npm ci
     build:
       commands:
+        - env | grep -e DATABASE_URL >> .env.production
         - npx prisma generate
         - npx next build --webpack
   artifacts:
