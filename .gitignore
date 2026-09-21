@@ -45,3 +45,12 @@ next-env.d.ts
 
 # Prisma が生成するクライアント（npm install 時に prisma generate で自動生成される）
 /src/generated
+
+# terraform
+infra/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log

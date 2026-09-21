@@ -1,0 +1,4 @@
+# cp terraform.tfvars.example terraform.tfvars して自分の値を入れる
+# terraform.tfvars は .gitignore 済み
+my_ip_cidr              = "203.0.113.10/32"
+allow_amplify_db_access = false
