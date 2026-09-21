@@ -11,6 +11,14 @@ resource "aws_amplify_app" "this" {
   environment_variables = {
     DATABASE_URL = local.database_url
   }
+
+  # Amplify は access_token を読み戻せない（write-only）ため、Terraform は
+  # apply のたびに差分ありと判定して再送する。有効な PAT を export し続けない限り
+  # plan が No changes. にならず、トークン失効時には無関係な apply まで巻き添えで失敗する。
+  # リポジトリ接続は Amplify 側に保存済みなので、更新時は送らない（作成時は送られる）。
+  lifecycle {
+    ignore_changes = [access_token]
+  }
 }
 
 resource "aws_amplify_branch" "main" {
@@ -20,4 +28,9 @@ resource "aws_amplify_branch" "main" {
   stage             = "PRODUCTION"
   framework         = "Next.js - SSR"
   enable_auto_build = true
+
+  enable_basic_auth = var.enable_basic_auth
+  basic_auth_credentials = var.enable_basic_auth ? base64encode(
+    "${var.basic_auth_username}:${var.basic_auth_password}"
+  ) : null
 }

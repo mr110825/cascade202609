@@ -77,3 +77,22 @@ variable "github_access_token" {
   sensitive   = true
   default     = ""
 }
+
+variable "enable_basic_auth" {
+  description = "Amplify の Basic 認証でサイト全体を閉じるか"
+  type        = bool
+  default     = true
+}
+
+variable "basic_auth_username" {
+  description = "Basic 認証のユーザー名"
+  type        = string
+  default     = "reviewer"
+}
+
+variable "basic_auth_password" {
+  description = "Basic 認証のパスワード。TF_VAR_basic_auth_password で渡す"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
