@@ -95,6 +95,156 @@ docker compose exec db psql -U cascade -d cascade
 
 ---
 
+## 本番環境
+
+```mermaid
+flowchart LR
+    U["ブラウザ"] -->|HTTPS| A
+    G["GitHub main"] -->|"push で自動ビルド"| A
+    subgraph AWS["AWS ap-northeast-1"]
+        A["Amplify Hosting Gen1<br/>WEB_COMPUTE (SSR)<br/>※VPC の外"]
+        S["Secrets Manager"]
+        subgraph VPC["VPC 10.0.0.0/16"]
+            subgraph PUB["Public Subnet x2 (AZ-a / AZ-c)"]
+                DB[("Aurora Serverless v2<br/>PostgreSQL 17.9")]
+            end
+        end
+    end
+    A -->|"5432 / TLS 必須"| DB
+    S -.->|"接続文字列を環境変数へ"| A
+```
+
+| 要素 | 採用 | 理由 |
+|---|---|---|
+| ホスティング | Amplify Hosting Gen1（`WEB_COMPUTE`） | Next.js の SSR をそのまま動かせる。`main` への push で自動ビルド |
+| DB | Aurora Serverless v2 PostgreSQL 17.9 | ローカルの PostgreSQL 17 と版を揃えている |
+| 最小容量 | `min_capacity = 0` | 1時間アクセスがないと 0 ACU まで落ちて課金が止まる。常時起動させる用途ではない |
+| サブネット | Public Subnet のみ | 後述の理由で Aurora も公開サブネットに置いている |
+| NAT Gateway | **使っていない** | Private Subnet を持たないため不要。この1台で月数千円が消える |
+| シークレット | Secrets Manager | DB の接続文字列を置き、Amplify の環境変数へ渡す |
+
+### なぜ Aurora が Public Subnet にあるのか
+
+**Amplify Hosting の SSR 実行環境は VPC に配置できない**
+（[amplify-hosting#3362](https://github.com/aws-amplify/amplify-hosting/issues/3362)、2023-03 に要望が立ち未提供）。
+そのため「Next.js を VPC 内で動かし、Aurora を Private Subnet に隔離する」という
+設計時（ステップ452）の構成は**前提から成立しない**。
+
+3案を比べて最後の案を採った。
+
+| 案 | 内容 | 判断 |
+|---|---|---|
+| ECS / App Runner へ載せ替え | VPC 内で SSR を動かす | ステップ455 の範囲を超える。Amplify を選んだ前提ごと崩れる |
+| RDS Proxy を挟む | 接続を中継する | Proxy が常時課金。`min_capacity = 0` にした意味が消える |
+| **Aurora を Public Subnet に置く** | ネットワーク層ではなく認証と暗号化で守る | **採用** |
+
+公開サブネットに置いた分は、次の4点で埋めている。
+
+| 守り | 実装 |
+|---|---|
+| TLS 必須 | クラスタパラメータグループで `rds.force_ssl = 1`。平文接続は DB 側が拒否する |
+| 証明書の検証 | アプリが RDS の CA を同梱し、証明書とホスト名の両方を検証する（`verify-full` 相当。`src/lib/rds-ca.ts`） |
+| パスワード | `random_password` が生成する32文字。人が入力することはなく Secrets Manager にだけ置く |
+| 公開期間 | Amplify の SSR は送信元 IP が公開されておらず絞り込めないため 5432 は `0.0.0.0/0` に開く。`allow_amplify_db_access = false` で閉じられるようにし、動かす期間だけ `true` にする |
+
+> **注意**: `src/lib/prisma.ts` は接続文字列に `sslmode` を**付けない**。
+> node-postgres は `sslmode` が指定されているとコード側の `ssl` 設定を丸ごと無視するため、
+> 付けると CA を渡せず証明書の検証に失敗する。TLS の設定は URL ではなくアプリ側に置いている。
+
+---
+
+## デプロイ
+
+### 初回（インフラごと作る）
+
+`infra/terraform.tfvars.example` を `infra/terraform.tfvars` にコピーし、`my_ip_cidr`（自宅のグローバル IP の `/32`）と
+`github_repository` を書いてから、
+
+```bash
+cd infra
+export TF_VAR_github_access_token="$(gh auth token)"
+
+terraform init
+terraform plan
+terraform apply
+```
+
+続けて、本番 DB にマイグレーションを流す。
+
+```bash
+cd ..
+export DATABASE_URL="$(aws secretsmanager get-secret-value \
+  --secret-id "$(cd infra && terraform output -raw db_secret_name)" \
+  --query SecretString --output text | jq -r .DATABASE_URL)"
+npx prisma migrate deploy
+```
+
+URL は `cd infra && terraform output -raw amplify_url` で取れる。
+
+### 2回目以降（アプリだけ）
+
+**`main` に push すれば Amplify が自動でビルドして反映する。**
+手で叩くコマンドは無い。
+
+```bash
+gh pr merge <PR番号> --squash --delete-branch   # ここで自動ビルドが走る
+
+aws amplify list-jobs --region ap-northeast-1 \
+  --app-id "$(cd infra && terraform output -raw amplify_app_id)" \
+  --branch-name main --max-results 3 \
+  --query 'jobSummaries[].[jobId,status,commitId]' --output table
+```
+
+ビルドの中身は**リポジトリルートの `amplify.yml`** が正本（Terraform 側に `build_spec` は書いていない）。
+
+> **`amplify.yml` の `.env.production` 書き出しは消さないこと。**
+> Amplify Gen1 の環境変数は**ビルド時にしか渡らず SSR ランタイムには届かない**ため、
+> ビルド中に `.env.production` へ書き出している。消すと本番で `DATABASE_URL` が
+> `undefined` になり、全ページが 500 になる。
+
+### state の扱い
+
+**state はローカルにしか無い**（`infra/terraform.tfstate`）。
+S3 バックエンドは使っていないので、`apply` のたびにリポジトリ外へ控えを取る。
+
+```bash
+cp infra/terraform.tfstate ~/cascade-tfstate-backup/terraform.tfstate.$(date +%Y%m%d%H%M%S)
+chmod 600 ~/cascade-tfstate-backup/terraform.tfstate.*
+```
+
+**state には DB のパスワードが平文で入る。** リポジトリには絶対に置かない
+（ルートの `.gitignore` で `*.tfstate` を除外している）。
+
+---
+
+## 撤収
+
+学習用の構成なので、レビューが終わったら消す。**Aurora は止めているだけでは
+ストレージ課金が続く**ため、使わないなら消すのが正しい。
+
+```bash
+cd infra
+terraform destroy
+```
+
+消え残りが無いか確認する（どれも何も返らないのが期待値）。
+
+```bash
+aws rds describe-db-clusters --region ap-northeast-1 \
+  --query "DBClusters[?starts_with(DBClusterIdentifier,'cascade')].DBClusterIdentifier" --output text
+aws amplify list-apps --region ap-northeast-1 \
+  --query "apps[?name=='cascade202609'].appId" --output text
+aws ec2 describe-vpcs --region ap-northeast-1 \
+  --filters 'Name=tag:Project,Values=cascade202609' --query 'Vpcs[].VpcId' --output text
+```
+
+`terraform destroy` が途中で止まったらもう一度打つ。Aurora の削除は数分かかり、
+依存関係の解決待ちでタイムアウトすることがある。
+`deletion_protection = false` / `skip_final_snapshot = true` にしてあるので、
+state を失った場合でも `aws rds delete-db-cluster` 等で手で消せる。
+
+---
+
 ## 技術スタック
 
 | レイヤー | 採用 | 選定理由 |
@@ -256,7 +406,6 @@ MVP 20件を実装している。以下は Phase 2 以降。
 - 限定公開URLを共有するための導線（値と判定はあるが専用UIは無し）
 - メール確認 / パスワードリセット / アカウント削除 / ログイン試行制限
 - 画像アップロード
-- 本番デプロイ（Amplify・Aurora）… ステップ455 で実施
 
 ---
 
