@@ -153,6 +153,60 @@ flowchart LR
 
 ---
 
+## 独自ドメインと証明書
+
+本番 URL は `https://www.cascade-app.click`（ステップ456 で追加）。
+Amplify が最初から払い出す `https://main.<app-id>.amplifyapp.com` も並行して生きている。
+
+| 要素 | 採用 | 理由 |
+|---|---|---|
+| ドメイン | Route53 で登録（`.click` / $3.00 / 自動更新 OFF） | 外部レジストラで取ると NS 委任を手作業でやることになる。Route53 なら登録時にホストゾーンと NS が自動で揃う |
+| ホストゾーン | Route53（登録時に自動作成） | Terraform は `data` で参照するだけ。作成は Terraform の外 |
+| レコード | `www` の CNAME ＋ ACM 検証用の CNAME | `aws_route53_record` で管理（`infra/domain.tf`） |
+| 証明書 | ACM（`*.cascade-app.click` / DNS 検証） | **Amplify Hosting が発行・更新・保持する**。自分のアカウントの ACM には現れない |
+| apex | 使わない | Route53 は apex に CNAME を置けない。`www` だけに寄せている |
+
+登録リクエストから独自ドメインで HTTPS が通るまで**約17分**だった
+（ドメイン登録 約10分 → レジストリへの委任反映 約2分 → 紐づけ作成から `AVAILABLE` まで 約5分）。
+ACM の DNS 検証そのものは1分未満で、待ち時間の本体は登録と委任だった。
+
+### ホストゾーンは登録リクエストの直後に作られる
+
+登録が `IN_PROGRESS` の段階（リクエストの1分後）で、既にホストゾーンが存在していた。
+**登録完了を待たなくても `data "aws_route53_zone"` の `plan` は通る**。
+
+### `www` の CNAME は Amplify が先に作る
+
+ホストゾーンが**同じ AWS アカウントの中**にあるため、`aws_amplify_domain_association` を
+作った時点で Amplify 自身が `www` の CNAME（TTL 500）をゾーンへ書き込む。
+Terraform で同じレコードを作ろうとすると `InvalidChangeBatch: ... but it already exists` で落ちるので、
+`allow_overwrite = true` を付けて Terraform の管理下に取り込んでいる。
+
+> 外部レジストラから NS を委任する構成ではこの衝突は起きない。
+> Route53 でドメインを取った場合だけの挙動。
+
+### 証明書は自分のアカウントの ACM に現れない
+
+`aws acm list-certificates` は us-east-1 / ap-northeast-1 のどちらでも **0件**を返す。
+実際に配信されている `*.cascade-app.click` は Amplify 側が持っていて、
+`aws_amplify_domain_association` が返すのは検証用の DNS レコードだけ。
+構成図で ACM を「Amplify が管理」と書いているのはこのため。
+
+### 撤収時に残るもの
+
+`terraform destroy` で消えるのは**紐づけとレコードまで**。
+ドメインの登録とホストゾーンは Terraform の外にあるので残る。
+
+| 残るもの | 扱い |
+|---|---|
+| ドメインの登録 | 自動更新 OFF（2027-09-21 失効）。途中解約・返金はできない |
+| ホストゾーン | **$0.50/月**が課金され続ける。消すなら `aws route53 delete-hosted-zone`（先にレコードを空にする） |
+
+再デプロイする予定があるならホストゾーンは残してよい。
+残しておけば NS が変わらないので、次に紐づけるときは `terraform apply` だけで済む。
+
+---
+
 ## デプロイ
 
 ### 初回（インフラごと作る）
@@ -237,6 +291,9 @@ aws amplify list-apps --region ap-northeast-1 \
 aws ec2 describe-vpcs --region ap-northeast-1 \
   --filters 'Name=tag:Project,Values=cascade202609' --query 'Vpcs[].VpcId' --output text
 ```
+
+**ドメインとホストゾーンは `terraform destroy` では消えない**（→「独自ドメインと証明書 / 撤収時に残るもの」）。
+ホストゾーンは残すと $0.50/月が課金され続ける。
 
 `terraform destroy` が途中で止まったらもう一度打つ。Aurora の削除は数分かかり、
 依存関係の解決待ちでタイムアウトすることがある。

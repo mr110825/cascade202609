@@ -20,3 +20,12 @@ output "amplify_app_id" {
 output "amplify_url" {
   value = "https://${aws_amplify_branch.main.branch_name}.${aws_amplify_app.this.default_domain}"
 }
+
+output "domain_name" {
+  value = var.domain_name
+}
+
+output "route53_name_servers" {
+  description = "ドメインに設定されている NS 4本（確認用）"
+  value       = data.aws_route53_zone.this.name_servers
+}
