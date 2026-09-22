@@ -96,3 +96,8 @@ variable "basic_auth_password" {
   sensitive   = true
   default     = ""
 }
+
+variable "domain_name" {
+  description = "456 で取得したドメイン（apex。例: cascade-app.click）"
+  type        = string
+}
